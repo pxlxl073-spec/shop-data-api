@@ -1,8 +1,8 @@
 export default async function handler(request) {
-  // 🔐 安全凭证（请再次确认以下两行信息！）
-  const SHOP_TOKEN = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4'; // 注意：是 `30uEQNv`，不是 `30euEQNv`
-  const SHOP_DOMAIN = 'www.factorydolls.com'; // 注意：是 `factorydolls.com`，不是 `factorydollis.com`
-  const API_VERSION = '2025-06';
+  // 🔴 关键检查点1：请确认以下两行信息完全正确！
+  const SHOP_TOKEN = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4'; // 您的店匠Token
+  const SHOP_DOMAIN = 'www.factorydolls.com'; // 您的店铺域名，确保没有拼写错误
+  const API_VERSION = '2025-06'; // 如出错，可尝试改为 '2024-01'
 
   const url = new URL(request.url);
   const customerId = url.searchParams.get('customer_id');
@@ -15,29 +15,33 @@ export default async function handler(request) {
   }
 
   try {
-    // 调用店匠官方API
+    // 🔴 关键检查点2：这是最可能出错的URL拼接行
+    // 格式必须为：https://您的店铺域名.myshoplaza.com/openapi/版本/orders?...
     const apiUrl = `https://${SHOP_DOMAIN}/openapi/${API_VERSION}/orders?customer_id=${customerId}&limit=250&status=any`;
+    console.log('正在请求店匠API，URL:', apiUrl); // 这行日志会帮助调试
+
     const response = await fetch(apiUrl, {
       headers: {
-        'Authorization': `Bearer ${SHOP_TOKEN}`, // 注意：这里使用的是反引号 `，不是单引号 '
+        'Authorization': `Bearer ${SHOP_TOKEN}`,
         'Content-Type': 'application/json',
       },
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('店匠API返回错误:', response.status, errorText);
       throw new Error(`店匠API请求失败: ${response.status}`);
     }
 
     const ordersData = await response.json();
     const orders = ordersData.orders || [];
 
-    // 统计各状态订单数量
     const stats = {
-      pending_payment: 0,   // 待付款
-      pending_shipment: 0,  // 待发货
-      shipped: 0,           // 已发货/待收货
-      completed: 0,         // 已完成
-      total: orders.length  // 全部订单
+      pending_payment: 0,
+      pending_shipment: 0,
+      shipped: 0,
+      completed: 0,
+      total: orders.length
     };
 
     orders.forEach(order => {
@@ -60,9 +64,13 @@ export default async function handler(request) {
     );
 
   } catch (error) {
-    console.error('Function Error:', error);
+    // 详细的错误日志将出现在Vercel Logs中
+    console.error('API函数执行失败，错误详情:', error.message, error.stack);
     return new Response(
-      JSON.stringify({ error: '获取订单数据时发生内部错误' }),
+      JSON.stringify({ 
+        error: '获取订单数据失败',
+        detail: error.message // 此信息会出现在返回的JSON中，便于调试
+      }),
       { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }
     );
   }
