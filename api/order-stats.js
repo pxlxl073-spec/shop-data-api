@@ -1,77 +1,69 @@
 export default async function handler(request) {
-  // 🔍 侦察目标1：确认我们的凭证和基础信息
-  const SHOP_TOKEN = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4';
-  const SHOP_DOMAIN = 'www.factorydolls.com';
-  const API_VERSION = '2024-01'; // 改为更稳定的旧版本
-  const url = new URL(request.url);
-  const customerId = url.searchParams.get('customer_id') || '未提供ID';
-
-  // 立即在日志中打印我们拥有的所有信息
-  console.log('=== 侦察开始 ===');
-  console.log('客户ID:', customerId);
-  console.log('店铺域名:', SHOP_DOMAIN);
-  console.log('API版本:', API_VERSION);
-  console.log('Token前10位:', SHOP_TOKEN.substring(0, 10) + '...');
-
-  // 🔍 侦察目标2：测试几种可能的店匠API根地址格式
-  const possibleBaseUrls = [
-    `https://${SHOP_DOMAIN}/openapi/${API_VERSION}`,
-    `https://${SHOP_DOMAIN}/api/${API_VERSION}`,
-    `https://api.shoplazza.com/${API_VERSION}`,
-    `https://${SHOP_DOMAIN}.myshoplaza.com/api/${API_VERSION}`,
-  ];
-
-  console.log('--- 测试以下可能的API基地址 ---');
-  possibleBaseUrls.forEach((baseUrl, index) => {
-    console.log(`选项 ${index + 1}: ${baseUrl}`);
-  });
-
-  // 构建一个测试URL（不带customer_id，用于测试连接和权限）
-  const testUrl = `https://${SHOP_DOMAIN}/openapi/${API_VERSION}/shop`;
-  console.log('--- 即将尝试请求的测试URL ---');
-  console.log('URL:', testUrl);
-
+  // 1. 不进行任何URL解析，直接打印传入的原始请求对象信息
+  console.log('=== 终极简版调试开始 ===');
+  console.log('1. 原始请求对象类型:', typeof request);
+  console.log('2. 原始 request.url 值:', request.url);
+  console.log('3. 请求方法:', request.method);
+  
+  // 尝试用最安全的方式获取查询参数（不依赖 new URL）
+  let customerId = '未找到';
   try {
-    const response = await fetch(testUrl, {
+    // 如果 request.url 是完整URL，可以这样解析
+    const queryString = request.url.split('?')[1] || '';
+    const params = new URLSearchParams(queryString);
+    customerId = params.get('customer_id') || '参数未提供';
+  } catch (e) {
+    console.log('4. 解析查询参数时出错:', e.message);
+  }
+  console.log('4. 客户ID (尝试解析):', customerId);
+  
+  // 2. 硬编码一个绝对正确的店匠API测试地址（不拼接，直接写死）
+  const shopToken = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4';
+  // 尝试两种最可能的店匠API根地址格式
+  const testApiUrl = 'https://www.factorydolls.com/openapi/2024-01/shop'; // 格式1
+  // 如果上面失败，下次可尝试：'https://api.shoplazza.com/2024-01/shop' 或 'https://www.factorydolls.com/api/2024-01/shop'
+  
+  console.log('5. 将使用此固定URL测试店匠API连通性:', testApiUrl);
+  console.log('6. Token前10位:', shopToken.substring(0, 10) + '...');
+  
+  // 3. 进行最简单的fetch请求测试
+  try {
+    console.log('7. 开始发起fetch请求...');
+    const response = await fetch(testApiUrl, {
       headers: {
-        'Authorization': `Bearer ${SHOP_TOKEN}`,
+        'Authorization': `Bearer ${shopToken}`,
         'Accept': 'application/json',
       },
     });
-
-    console.log('--- 请求结果 ---');
-    console.log('状态码:', response.status);
-    console.log('状态文本:', response.statusText);
-
+    console.log('8. fetch请求完成，状态码:', response.status);
+    
     if (!response.ok) {
-      // 即使失败，也尝试读取错误信息
       const errorText = await response.text().catch(() => '无法读取响应体');
-      console.log('错误响应体:', errorText.substring(0, 200)); // 只截取前200字符
+      console.log('9. 请求失败，错误信息:', errorText.substring(0, 300));
     } else {
-      const data = await response.json();
-      console.log('成功! 响应数据结构:', Object.keys(data));
+      const data = await response.json().catch(() => ({}));
+      console.log('9. 请求成功! 响应数据键名:', Object.keys(data));
     }
-
   } catch (fetchError) {
-    console.error('--- 请求过程中抛出异常 ---');
-    console.error('错误名称:', fetchError.name);
-    console.error('错误信息:', fetchError.message);
-    // 如果是URL错误，这里会捕获到
-    if (fetchError.message.includes('Invalid URL') || fetchError.name === 'TypeError') {
-      console.error('🔥 确认是URL格式错误！问题出在地址拼接。');
+    console.error('10. fetch请求过程发生异常:');
+    console.error('   - 错误名称:', fetchError.name);
+    console.error('   - 错误信息:', fetchError.message);
+    if (fetchError.message.includes('Invalid URL')) {
+      console.error('   - 🔥 确认是URL格式错误！问题出在 testApiUrl 变量');
     }
   }
-
-  console.log('=== 侦察结束 ===');
-
-  // 返回一个清晰的错误信息，以便在浏览器中查看
+  
+  console.log('=== 终极简版调试结束 ===');
+  
+  // 无论如何都返回一个成功的响应，确保函数不崩溃
   return new Response(
     JSON.stringify({ 
-      message: '侦察完成，请查看Vercel控制台的“Logs”获取详细信息。',
-      instruction: '关键信息已打印在日志中，请将最新的日志截图发给助手。'
+      message: '调试函数执行完毕，请查看Vercel控制台日志。',
+      status: 'success',
+      debug: { customerId, testApiUrl }
     }),
     { 
-      status: 500, // 故意返回500，以便在日志中记录这次侦察
+      status: 200,
       headers: { 
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*'
