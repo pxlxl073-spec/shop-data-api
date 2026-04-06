@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/order-stats.js": {
+      "maxDuration": 10
+    }
+  }
+}
