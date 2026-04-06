@@ -1,12 +1,12 @@
 export default async function handler(request) {
-  // 🔐 安全凭证（请确认以下两行信息是你的）
-  const SHOP_TOKEN = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4'; // 你的店匠Token
-  const SHOP_DOMAIN = 'www.factorydolls.com'; // 你的店铺域名
+  // 🔐 安全凭证（请再次确认以下两行信息！）
+  const SHOP_TOKEN = 'VTnevNcTWaQ7If30uEQNv9raikAlOvOTNBVixQSqNH4'; // 注意：是 `30uEQNv`，不是 `30euEQNv`
+  const SHOP_DOMAIN = 'www.factorydolls.com'; // 注意：是 `factorydolls.com`，不是 `factorydollis.com`
   const API_VERSION = '2025-06';
 
   const url = new URL(request.url);
   const customerId = url.searchParams.get('customer_id');
-  
+
   if (!customerId) {
     return new Response(
       JSON.stringify({ error: '缺少客户ID参数 (customer_id)' }),
@@ -15,15 +15,14 @@ export default async function handler(request) {
   }
 
   try {
-    const response = await fetch(
-      `https://${SHOP_DOMAIN}/openapi/${API_VERSION}/orders?customer_id=${customerId}&limit=250&status=any`,
-      {
-        headers: {
-          'Authorization': `Bearer ${SHOP_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    // 调用店匠官方API
+    const apiUrl = `https://${SHOP_DOMAIN}/openapi/${API_VERSION}/orders?customer_id=${customerId}&limit=250&status=any`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${SHOP_TOKEN}`, // 注意：这里使用的是反引号 `，不是单引号 '
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       throw new Error(`店匠API请求失败: ${response.status}`);
@@ -32,6 +31,7 @@ export default async function handler(request) {
     const ordersData = await response.json();
     const orders = ordersData.orders || [];
 
+    // 统计各状态订单数量
     const stats = {
       pending_payment: 0,   // 待付款
       pending_shipment: 0,  // 待发货
