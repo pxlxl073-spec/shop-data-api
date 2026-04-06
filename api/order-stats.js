@@ -1,34 +1,32 @@
-export default async function handler(request) {
-  // 1. 安全地解析查询参数
-  const queryString = request.url.includes('?') ? request.url.split('?')[1] : '';
-  const params = new URLSearchParams(queryString);
-  const customerId = params.get('customer_id');
-  
-  console.log(`[INFO] 收到请求，客户ID: ${customerId || '未提供'}`);
+export default async function (request) {
+  // 1. 安全解析参数，避免任何可能的URL解析错误
+  let customerId = '未提供';
+  try {
+    const url = new URL(request.url);
+    customerId = url.searchParams.get('customer_id') || customerId;
+  } catch (e) {
+    // 如果URL解析失败，尝试从原始字符串中解析
+    const match = request.url.match(/customer_id=([^&]+)/);
+    if (match) customerId = match[1];
+  }
 
-  // 2. 根据客户ID，返回预设的模拟数据（您可以根据需要修改数字）
-  // 如果customerId存在，模拟一个已登录用户的数据；否则为未登录状态（0）
-  const isLoggedIn = customerId && customerId.length > 5;
-  
-  const mockStats = isLoggedIn ? {
-    pending_payment: 2,   // 待付款
-    pending_shipment: 1,  // 待发货
-    shipped: 3,           // 待收货
-    completed: 5,         // 已完成
-    total: 11,            // 全部订单
-    _note: '当前为模拟数据。正在配置真实店匠API，即将上线。'
-  } : {
-    pending_payment: 0,
-    pending_shipment: 0,
-    shipped: 0,
-    completed: 0,
-    total: 0,
-    _note: '用户未登录或ID无效。'
+  // 2. 立即返回模拟的成功数据，不进行任何外部网络调用
+  const mockData = {
+    pending_payment: 2,
+    pending_shipment: 1,
+    shipped: 3,
+    completed: 5,
+    total: 11,
+    debug: {
+      received_customer_id: customerId,
+      message: "此数据为模拟数据，用于确认API通道畅通。",
+      timestamp: new Date().toISOString()
+    }
   };
 
-  // 3. 立即返回成功的响应
+  // 3. 返回成功响应
   return new Response(
-    JSON.stringify(mockStats),
+    JSON.stringify(mockData, null, 2),
     {
       status: 200,
       headers: {
